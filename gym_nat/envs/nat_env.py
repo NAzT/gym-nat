@@ -4,6 +4,8 @@ from gym.utils import seeding
 import numpy as np
 from os import path
 import pyglet
+from makerasia import pendulum
+
 import math
 
 
@@ -243,50 +245,6 @@ class NatEnv(gym.Env):
 				pendulum_angle, pendulum_velocity, cart_position, cart_velocity, cart_acceleration, limit_A, limit_B = line.decode(
 					"utf-8").strip().split(",")
 
-				limit_A = bool(int(limit_A))
-				limit_B = bool(int(limit_B))
-				pendulum_angle = float(pendulum_angle)
-				pendulum_velocity = float(pendulum_velocity)
-				cart_position = float(cart_position)
-				cart_velocity = float(cart_velocity)
-				cart_acceleration = float(cart_acceleration)
-
-				# self.status = (
-				# 	pendulum_angle, pendulum_velocity, cart_position, cart_velocity, cart_acceleration, limit_A,
-				# 	limit_B)
-
-				cart_position = interp(float(cart_position), [0, 0.35], [-2.4, 2.4])
-
-				raw_pendulum_angle = (float(pendulum_angle))
-				pendulum_angle = (float(pendulum_angle)) % 360
-
-				if pendulum_angle < 0:
-					pendulum_angle = 180.0 + pendulum_angle
-
-				pendulum_angle = interp(pendulum_angle, [0, 360], [0, 360])
-				calc_pendulum_angle = interp(pendulum_angle, [0, 360], [-180, 180])
-				# print(calc_pendulum_angle, pendulum_angle)
-
-				# pendulum_angle += 180
-
-				# xy = pendulum_angle
-				# print((raw_pendulum_angle % 180) * 2)
-				# print(xy, pendulum_angle)
-				# pendulum_angle = pendulum_angle + 180
-
-				# pendulum_angle += 180
-				# pendulum_angle /= 180.0
-				# pendulum_angle *= math.pi
-
-				# print(cart_position)
-				self.state = (
-					calc_pendulum_angle, pendulum_velocity, cart_position, cart_velocity, cart_acceleration, limit_A,
-					limit_B)
-
-				self.status = (
-					pendulum_angle, pendulum_velocity, cart_position, cart_velocity, cart_acceleration, limit_A,
-					limit_B)
-				# (pendulum_angle, pendulum_velocity, cart_position, cart_velocity, cart_acceleration, limit_A, limit_B)
 				self.ready = True
 			except Exception as e:
 				print('exception', e)
@@ -317,39 +275,49 @@ class NatEnv(gym.Env):
 		self.ser.write(command)
 
 	def __init__(self):
-		device = '/dev/tty.usbserial-14210'
-		print(device)
-		baud = 115200
+		print("init", pendulum)
 
-		if not device:
-			# devicelist = commands.getoutput("ls /dev/ttyAMA*")
-			if devicelist[0] == '/':
-				device = devicelist
-			if not device:
-				print("Fatal: Can't find usb serial device.")
-				sys.exit(0);
-			else:
-				print("Success: device = %s" % device)
+		def cb(val):
+			pendulum_angle, pendulum_velocity, cart_position, cart_velocity, cart_acceleration, limit_A, limit_B = val
+			self.ready = True
+			limit_A = bool(int(limit_A))
+			limit_B = bool(int(limit_B))
+			pendulum_angle = float(pendulum_angle)
+			pendulum_velocity = float(pendulum_velocity)
+			cart_position = float(cart_position)
+			cart_velocity = float(cart_velocity)
+			cart_acceleration = float(cart_acceleration)
 
-		ser = serial.Serial(
-			port=device,
-			baudrate=baud,
-			parity=serial.PARITY_NONE,
-			stopbits=serial.STOPBITS_ONE,
-			bytesize=serial.EIGHTBITS
-		)
+			cart_position = interp(float(cart_position), [0, 0.35], [-2.4, 2.4])
+			raw_pendulum_angle = (float(pendulum_angle))
+			pendulum_angle = (float(pendulum_angle)) % 360
+
+			if pendulum_angle < 0:
+				pendulum_angle = 180.0 + pendulum_angle
+
+			pendulum_angle = interp(pendulum_angle, [0, 360], [0, 360])
+			calc_pendulum_angle = interp(pendulum_angle, [0, 360], [-180, 180])
+
+			self.state = (
+				calc_pendulum_angle, pendulum_velocity, cart_position, cart_velocity, cart_acceleration, limit_A,
+				limit_B)
+
+			self.status = (
+				pendulum_angle, pendulum_velocity, cart_position, cart_velocity, cart_acceleration, limit_A,
+				limit_B)
+
+			print(self.status)
+
+		ser = pendulum.create('/dev/tty.usbserial-14340')
+		pendulum.add_callback(cb)
 
 		self.ser = ser
 		self.ready = False
-
-		self.thread = threading.Thread(target=self.read_from_port, args=(self.ser,))
-		self.thread.start()
 
 		while not self.ready:
 			print("WAIT..")
 			time.sleep(0.2)
 
-		print(ser)
 		self.gravity = 9.8
 		self.masscart = 1.0
 		self.masspole = 0.1

@@ -1,2 +1,4 @@
 gym
 pyserial
+pandas
+makerasia-pendulum@ git+https://github.com/NAzT/ma1.git
